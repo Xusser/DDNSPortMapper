@@ -5,6 +5,7 @@
 ## 依赖
 
 - dig
+- [tinyportmapper](https://github.com/wangyu-/tinyPortMapper)
 
 ## 使用方法
 
