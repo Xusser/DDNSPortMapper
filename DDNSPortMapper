@@ -1,0 +1,101 @@
+#!/usr/bin/python3
+# coding: utf=8
+
+# pip3 install colorama
+
+import argparse
+import sys
+import subprocess
+import re
+import os
+import colorama
+from colorama import Fore, Style
+from time import sleep
+
+exePath = "/usr/local/bin/tinymapper_amd64"
+digPath = '/usr/bin/dig'
+
+ListenSocket = ''
+RemoteAddr = ''
+RemotePort = ''
+DNS = '1.1.1.1'
+
+pPortMapper = None
+OriginalIP = ''
+RemoteIP = ''
+
+#print(sys.argv)
+
+# 解析参数
+if len(sys.argv) < 3:
+    print('Args at least to be 2 !\neg. #./DDNSPortMapper 0.0.0.0:1234 www.baidu.com:80')
+    sys.exit(1)
+
+if len(sys.argv) > 3:
+    print('Args should not more than 2 !\neg. #./DDNSPortMapper 0.0.0.0:1234 www.baidu.com:80')
+    sys.exit(1)
+
+
+LocalValues = sys.argv[1].split(':')
+if len(LocalValues) != 2:
+    print('The first argument should be a socket!\neg. 0.0.0.0:1234')
+    sys.exit(1)
+
+RemoteValues = sys.argv[2].split(':')
+if len(RemoteValues) != 2:
+    print('The second argument should be a socket!\neg. www.baidu.com:80')
+    sys.exit(1)
+
+ListenSocket = sys.argv[1]
+RemoteAddr = RemoteValues[0]
+RemotePort = RemoteValues[1]
+
+print ('ListenSocket: ', ListenSocket)
+print ('RemoteAddr: ', RemoteAddr)
+print ('RemotePort: ', RemotePort)
+
+def getIP():
+    global DNS
+    global RemoteAddr
+    global RemoteIP
+    dnsstr = '@' + DNS
+    sp = subprocess.run([digPath, "+short", RemoteAddr, dnsstr],stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    if sp.returncode == 0:
+        # 可能有多个ip 只拿第一个
+        ips = re.findall( r'[0-9]+(?:\.[0-9]+){3}', sp.stdout.decode("utf-8"))
+        if len(ips) < 1:
+            print(Fore.RED + 'Fail to get ip' + Style.RESET_ALL)
+            RemoteIP = ''
+            return
+        if len(ips) > 1:
+            print(Fore.YELLOW + 'Multiple IPs for this domain : ', ips, '\nThe first one will be used' + Style.RESET_ALL)
+        print(Fore.GREEN + 'IP for ', RemoteAddr,' is ',ips[0] + Style.RESET_ALL)
+        # 更新IP
+        RemoteIP = ips[0]
+        return
+    else:
+        print(Fore.RED + 'Fail to resolve' + Style.RESET_ALL)
+        RemoteIP = ''
+        return
+
+while True:
+    getIP()
+    if RemoteIP == '':
+        print('Wait for the next turn(5 seconds)')
+        sleep(5) # 5s
+        continue
+    if OriginalIP == RemoteIP:
+        print('Wait for the next turn(5 minutes)')
+        sleep(1*60*5) # 1s*60*5
+        continue
+    RemoteSocket = RemoteIP + ':' + RemotePort
+    OriginalIP = RemoteIP
+    if pPortMapper is not None:
+        try:
+            pPortMapper.kill()
+        except:
+            pass
+    # 使用Popen方法 使其不等待
+    pPortMapper = subprocess.Popen([exePath, "-l", ListenSocket, "-r", RemoteSocket, "-t" , "-u"],stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    print('Start(Update) Success, Wait for the next turn(5 minutes)')
+    sleep(1*60*5) # 1s*60*5

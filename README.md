@@ -5,13 +5,14 @@
 ## 依赖
 
 - dig
+- Python3
+- colorama(pip3 install colorama)
 - [tinyportmapper](https://github.com/wangyu-/tinyPortMapper)
 
-## 使用方法
+## 使用
 
 ```shell
-./DDNSPortMapper.sh 监听端口 远端域名 远端端口
-./DDNSPortMapper.sh 1234 baidu.com 4321
+./DDNSPortMapper 0.0.0.0:1234 www.baidu.com:80
 ```
 
 默认检查频率为5分钟
