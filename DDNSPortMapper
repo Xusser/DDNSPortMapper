@@ -88,11 +88,14 @@ while True:
         print('Wait for the next turn(5 minutes)')
         sleep(1*60*5) # 1s*60*5
         continue
+    # 后面开始为IP正常更换后的逻辑
     RemoteSocket = RemoteIP + ':' + RemotePort
     OriginalIP = RemoteIP
     if pPortMapper is not None:
         try:
             pPortMapper.kill()
+            pPortMapper = None
+            sleep(1)
         except:
             pass
     # 使用Popen方法 使其不等待
