@@ -6,6 +6,7 @@
 import argparse
 import sys
 import subprocess
+import threading
 import re
 import os
 import colorama
@@ -18,11 +19,13 @@ digPath = '/usr/bin/dig'
 ListenSocket = ''
 RemoteAddr = ''
 RemotePort = ''
+RemoteSocket = ''
 DNS = '1.1.1.1'
 
-pPortMapper = None
 OriginalIP = ''
 RemoteIP = ''
+
+RestartMapping = False
 
 #print(sys.argv)
 
@@ -54,6 +57,26 @@ print ('ListenSocket: ', ListenSocket)
 print ('RemoteAddr: ', RemoteAddr)
 print ('RemotePort: ', RemotePort)
 
+def PortMapperThread():
+    global RestartMapping
+    global exePath
+    global ListenSocket
+    global RemoteSocket
+    pPortMapper = None
+    while True:
+        if RestartMapping is False:
+            continue
+        # else
+        if pPortMapper is not None:
+            try:
+                pPortMapper.kill()
+                pPortMapper = None
+            except:
+                pass
+        print('Start(Updat)ing portmapper...')
+        pPortMapper = subprocess.Popen([exePath, "-l", ListenSocket, "-r", RemoteSocket, "-t" , "-u"],stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+        RestartMapping = False
+
 def getIP():
     global DNS
     global RemoteAddr
@@ -78,6 +101,8 @@ def getIP():
         RemoteIP = ''
         return
 
+threading.Thread( target = PortMapperThread).start()
+
 while True:
     getIP()
     if RemoteIP == '':
@@ -91,14 +116,7 @@ while True:
     # 后面开始为IP正常更换后的逻辑
     RemoteSocket = RemoteIP + ':' + RemotePort
     OriginalIP = RemoteIP
-    if pPortMapper is not None:
-        try:
-            pPortMapper.kill()
-            pPortMapper = None
-            sleep(1)
-        except:
-            pass
-    # 使用Popen方法 使其不等待
-    pPortMapper = subprocess.Popen([exePath, "-l", ListenSocket, "-r", RemoteSocket, "-t" , "-u"],stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+
+    RestartMapping = True
     print('Start(Update) Success, Wait for the next turn(5 minutes)')
     sleep(1*60*5) # 1s*60*5
